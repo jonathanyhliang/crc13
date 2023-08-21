@@ -10,49 +10,49 @@
 #include <stdlib.h>
 #include "crc13_tab.h"
 
-void print_usage(char *prg)
+int calc_crc13(uint8_t ch, uint16_t *crc)
 {
-	fprintf(stderr, "%s - Returns CRC13 of input stream.\n\n", prg);
-	fprintf(stderr, "   Usage: %s <input stream>\n\n", prg);
-	exit(EXIT_FAILURE);
-}
+    uint16_t crc_tmp = *crc;
+    uint8_t pos;
 
-int calc_crc13(uint8_t inputs[], uint16_t *crc)
-{
-    uint16_t crc_tmp = 0;
-    uint8_t in, pos;
-    int i = 0; /* MAX_ARG_STRLEN = PAGE_SIZE(4096) * 32 */
-
-    if (inputs == NULL || crc == NULL) {
+    if (crc == NULL) {
         return -EINVAL;
     }
 
-    while (inputs[i] != '\0') {
-        in = inputs[i];
-        pos = (uint8_t)((crc_tmp ^ ((uint16_t)in << (13u - 8u))) >> (13u - 8u));
-        crc_tmp = (uint16_t)(((uint32_t)crc_tmp << 8) ^ (uint32_t)crc_tab[pos]);
-        i++;
-    }
-
+    pos = (uint8_t)((crc_tmp ^ ((uint16_t)ch << (13u - 8u))) >> (13u - 8u));
+    crc_tmp = (uint16_t)(((uint32_t)crc_tmp << 8) ^ (uint32_t)crc_tab[pos]);
+    crc_tmp &= 0x1FFF;
     *crc = crc_tmp;
 
     return 0;
 }
 
-int main(int argc, char *argv[])
+int main()
 {
-    uint16_t crc;
+    uint16_t crc = 0;
 
-    if (argc != 2) {
-        print_usage(argv[0]);
+    errno = 0;
+
+    while(1) {
+        int ch = getchar();
+        if (ch != EOF) {
+            /* Skip control characters */
+            if (ch > 31 && ch != 127) {
+                if (calc_crc13((uint8_t)ch, &crc) != 0) {
+                    perror("Error: calc_crc13: Invalid argument(s)");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        } else {
+            if (errno) {
+                perror("Error: stdin (%d)");
+                exit(EXIT_FAILURE);
+            }
+
+            printf("0x%04x\n", crc);
+            break;
+        }
     }
-
-    if (calc_crc13((uint8_t*)argv[1], &crc) != 0) {
-        perror("Error: calc_crc13: Invalid argument(s)");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("0x%04x\n", crc);
 
     return 0;
 }
