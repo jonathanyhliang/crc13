@@ -31,8 +31,6 @@ int main()
 {
     uint16_t crc = 0;
 
-    errno = 0;
-
     while(1) {
         int ch = getchar();
         if (ch != EOF) {
